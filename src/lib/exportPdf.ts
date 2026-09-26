@@ -291,45 +291,50 @@ export async function generateLogbookPdf(profile: Profile | null, entries: Logbo
                 margin: [0, 0, 0, 24]
             },
             {
-                columns: [
-                    { text: "", width: "*" },
+                unbreakable: true,
+                stack: [
                     {
-                        stack: [
-                            { text: "Mahasiswa,", style: "signLabel", alignment: "center" },
-                            { text: "\n\n\n\n" },
-                            { text: profile?.full_name || ".......................................", style: "signName", alignment: "center" }
+                        columns: [
+                            { text: "", width: "*" },
+                            {
+                                stack: [
+                                    { text: "Mahasiswa,", style: "signLabel", alignment: "center" },
+                                    { text: "\n\n\n\n" },
+                                    { text: profile?.full_name || ".......................................", style: "signName", alignment: "center" }
+                                ],
+                                width: 180
+                            },
+                            { text: "", width: 40 }
                         ],
-                        width: 180
-                    },
-                    { text: "", width: 40 }
-                ],
-                margin: [0, 0, 0, 24]
-            },
-            {
-                text: "Mengetahui,",
-                style: "metaLabel",
-                alignment: "center",
-                margin: [0, 0, 0, 24]
-            },
-            {
-                columns: [
-                    {
-                        stack: [
-                            { text: "Dosen Pembimbing,", style: "signLabel", alignment: "center" },
-                            { text: "\n\n\n\n" },
-                            { text: "................................................", style: "signLabel", alignment: "center" },
-                            { text: profile?.lecturer_name || "", style: "signName", alignment: "center" }
-                        ],
-                        width: "*"
+                        margin: [0, 0, 0, 16]
                     },
                     {
-                        stack: [
-                            { text: "Pembimbing Lapangan,", style: "signLabel", alignment: "center" },
-                            { text: "\n\n\n\n" },
-                            { text: "................................................", style: "signLabel", alignment: "center" },
-                            { text: profile?.mentor_name || "", style: "signName", alignment: "center" }
-                        ],
-                        width: "*"
+                        text: "Mengetahui,",
+                        style: "metaLabel",
+                        alignment: "center",
+                        margin: [0, 0, 0, 16]
+                    },
+                    {
+                        columns: [
+                            {
+                                stack: [
+                                    { text: "Dosen Pembimbing,", style: "signLabel", alignment: "center" },
+                                    { text: "\n\n\n\n" },
+                                    { text: "................................................", style: "signLabel", alignment: "center" },
+                                    { text: profile?.lecturer_name || "", style: "signName", alignment: "center" }
+                                ],
+                                width: "*"
+                            },
+                            {
+                                stack: [
+                                    { text: "Pembimbing Lapangan,", style: "signLabel", alignment: "center" },
+                                    { text: "\n\n\n\n" },
+                                    { text: "................................................", style: "signLabel", alignment: "center" },
+                                    { text: profile?.mentor_name || "", style: "signName", alignment: "center" }
+                                ],
+                                width: "*"
+                            }
+                        ]
                     }
                 ]
             }

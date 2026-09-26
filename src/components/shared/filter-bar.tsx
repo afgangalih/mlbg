@@ -1,12 +1,16 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
+import { WeekRange } from "@/lib/utils"
 
 interface FilterBarProps {
     selectedMonth: string
     setSelectedMonth: (month: string) => void
     selectedDate: string
     setSelectedDate: (date: string) => void
+    selectedWeek: string
+    setSelectedWeek: (week: string) => void
+    weeks: WeekRange[]
 }
 
 const MONTHS = [
@@ -29,16 +33,26 @@ export default function FilterBar({
     selectedMonth,
     setSelectedMonth,
     selectedDate,
-    setSelectedDate
+    setSelectedDate,
+    selectedWeek,
+    setSelectedWeek,
+    weeks
 }: FilterBarProps) {
+    const hasWeeks = selectedMonth !== "all" && weeks.length > 0
+    
     return (
-        <div className="flex flex-col sm:flex-row gap-4 w-full items-end justify-between bg-white border border-neutral-200 rounded-xl p-5 shadow-sm">
-            <div className="flex flex-col gap-2 w-full sm:w-auto flex-1">
-                <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Saring Berdasarkan Bulan</span>
+        <div className={`grid gap-4 w-full bg-white border border-neutral-200 rounded-xl p-5 shadow-sm transition-all duration-200 ${
+            hasWeeks ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"
+        }`}>
+            <div className="flex flex-col gap-1.5 w-full">
+                <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">Saring Bulan</span>
                 <select
                     value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-[#111827] outline-none focus:border-neutral-400 min-w-[200px]"
+                    onChange={(e) => {
+                        setSelectedMonth(e.target.value)
+                        setSelectedWeek("all")
+                    }}
+                    className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-[#111827] outline-none focus:border-neutral-400"
                 >
                     {MONTHS.map((month) => (
                         <option key={month.value} value={month.value}>
@@ -47,12 +61,37 @@ export default function FilterBar({
                     ))}
                 </select>
             </div>
-            <div className="flex flex-col gap-2 w-full sm:w-auto flex-1">
-                <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Pilih Tanggal Spesifik</span>
+            
+            {hasWeeks && (
+                <div className="flex flex-col gap-1.5 w-full animate-in fade-in slide-in-from-top-1 duration-150">
+                    <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">Pilih Minggu</span>
+                    <select
+                        value={selectedWeek}
+                        onChange={(e) => setSelectedWeek(e.target.value)}
+                        className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-3 text-sm text-[#111827] outline-none focus:border-neutral-400"
+                    >
+                        <option value="all">Semua Minggu</option>
+                        {weeks.map((w) => (
+                            <option key={w.weekNumber} value={w.weekNumber.toString()}>
+                                {w.label}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            <div className="flex flex-col gap-1.5 w-full">
+                <span className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">Tanggal Spesifik</span>
                 <Input
                     type="date"
                     value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
+                    onChange={(e) => {
+                        setSelectedDate(e.target.value)
+                        if (e.target.value) {
+                            setSelectedMonth("all")
+                            setSelectedWeek("all")
+                        }
+                    }}
                     className="h-10 text-sm border-neutral-200 bg-white focus-visible:border-neutral-400 focus-visible:ring-0 w-full"
                 />
             </div>

@@ -16,6 +16,7 @@ import {
     DialogTitle
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
+import { getWeeksOfMonth } from "@/lib/utils"
 
 type LogbookEntry = {
     id: string
@@ -54,6 +55,7 @@ export default function DashboardPage() {
     const [entries, setEntries] = useState<LogbookEntry[]>([])
     const [editingEntry, setEditingEntry] = useState<LogbookEntry | null>(null)
     const [selectedMonth, setSelectedMonth] = useState("all")
+    const [selectedWeek, setSelectedWeek] = useState("all")
     const [selectedDate, setSelectedDate] = useState("")
 
     useEffect(() => {
@@ -175,6 +177,15 @@ export default function DashboardPage() {
         toast.success("Logbook berhasil dihapus")
     }
 
+    let filterYear = new Date().getFullYear()
+    if (selectedMonth !== "all" && entries.length > 0) {
+        const found = entries.find(e => e.date.split("-")[1] === selectedMonth)
+        if (found) {
+            filterYear = parseInt(found.date.split("-")[0], 10)
+        }
+    }
+    const weeks = selectedMonth !== "all" ? getWeeksOfMonth(filterYear, parseInt(selectedMonth, 10)) : []
+
     const generateFilename = (extension: string) => {
         const nim = profile?.nim ? String(profile.nim).replace(/[^a-zA-Z0-9]/g, "") : "Magang"
         const fullName = profile?.full_name 
@@ -206,7 +217,12 @@ export default function DashboardPage() {
             if (found) {
                 year = found.date.split("-")[0]
             }
-            period = `${monthName}_${year}`
+
+            if (selectedWeek !== "all") {
+                period = `${monthName}_${year}_Minggu_${selectedWeek}`
+            } else {
+                period = `${monthName}_${year}`
+            }
         }
 
         const cleanFilename = `Logbook_${nim}_${fullName}_${period}.${extension}`
@@ -232,6 +248,7 @@ export default function DashboardPage() {
             toast.error("Gagal mengekspor dokumen Word")
         }
     }
+
     const handleExportPDF = async () => {
         try {
             const { generateLogbookPdf } = await import("@/lib/exportPdf")
@@ -244,11 +261,76 @@ export default function DashboardPage() {
         }
     }
 
+    const handleExportSeparate = async (type: "pdf" | "docx") => {
+        try {
+            const sortedEntries = [...entries].sort((a, b) => a.date.localeCompare(b.date))
+            
+            for (const w of weeks) {
+                const weekEntries = sortedEntries.filter(entry => {
+                    const entryMonth = entry.date.split("-")[1]
+                    if (entryMonth !== selectedMonth) return false
+                    return entry.date >= w.startDate && entry.date <= w.endDate
+                })
+                
+                if (weekEntries.length === 0) continue
+                
+                const nim = profile?.nim ? String(profile.nim).replace(/[^a-zA-Z0-9]/g, "") : "Magang"
+                const fullName = profile?.full_name 
+                    ? String(profile.full_name)
+                        .replace(/\s+/g, "_")
+                        .replace(/[^a-zA-Z0-9_]/g, "")
+                    : "Mahasiswa"
+                
+                const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+                const monthIndex = parseInt(selectedMonth, 10) - 1
+                const monthName = months[monthIndex] || "Bulan"
+                
+                let year = new Date().getFullYear().toString()
+                const found = entries.find(e => e.date.split("-")[1] === selectedMonth)
+                if (found) {
+                    year = found.date.split("-")[0]
+                }
+                
+                const filename = `Logbook_${nim}_${fullName}_${monthName}_${year}_Minggu_${w.weekNumber}.${type}`.replace(/[\/\\:\*\?"<>\|]/g, "")
+                
+                if (type === "docx") {
+                    const { generateLogbookDocx } = await import("@/lib/exportDocx")
+                    const blob = await generateLogbookDocx(profile, weekEntries)
+                    const url = window.URL.createObjectURL(blob)
+                    const a = document.createElement("a")
+                    a.href = url
+                    a.download = filename
+                    document.body.appendChild(a)
+                    a.click()
+                    window.URL.revokeObjectURL(url)
+                    document.body.removeChild(a)
+                } else {
+                    const { generateLogbookPdf } = await import("@/lib/exportPdf")
+                    await generateLogbookPdf(profile, weekEntries, filename)
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 300))
+            }
+            toast.success(`Berhasil mengekspor seluruh minggu terpisah (.${type})`)
+        } catch {
+            toast.error(`Gagal mengekspor laporan terpisah`)
+        }
+    }
+
     const filteredEntries = entries.filter((entry) => {
         if (selectedDate && entry.date !== selectedDate) return false
         if (selectedMonth !== "all") {
             const entryMonth = entry.date.split("-")[1]
             if (entryMonth !== selectedMonth) return false
+            
+            if (selectedWeek !== "all" && weeks.length > 0) {
+                const activeWeek = weeks.find(w => w.weekNumber.toString() === selectedWeek)
+                if (activeWeek) {
+                    if (entry.date < activeWeek.startDate || entry.date > activeWeek.endDate) {
+                        return false
+                    }
+                }
+            }
         }
         return true
     })
@@ -262,32 +344,69 @@ export default function DashboardPage() {
             <main className="mx-auto max-w-4xl px-4 py-8 space-y-6">
                 <WarningBanner isVisible={showWarning} />
 
-                <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between border border-neutral-200 rounded-xl p-5 bg-white shadow-sm">
-                    <span className="text-xs font-semibold text-[#111827] uppercase tracking-wider">
-                        Utilitas & Ekspor Laporan Resmi
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setPreviewOpen(true)}
-                            className="h-10 px-4 text-sm font-medium rounded-lg border border-neutral-200 bg-white text-[#111827] hover:bg-neutral-50 transition-colors"
-                        >
-                            Preview Laporan
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleExportWord}
-                            className="h-10 px-4 text-sm font-medium rounded-lg border border-neutral-200 bg-white text-[#111827] hover:bg-neutral-50 transition-colors"
-                        >
-                            Simpan Word (.docx)
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleExportPDF}
-                            className="h-10 px-4 text-sm font-medium rounded-lg border border-neutral-200 bg-white text-[#111827] hover:bg-neutral-50 transition-colors"
-                        >
-                            Simpan PDF (.pdf)
-                        </button>
+                <div className="border border-neutral-200 rounded-xl p-6 bg-white shadow-sm space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-100 pb-4">
+                        <div className="space-y-0.5">
+                            <h3 className="text-xs font-bold text-[#111827] uppercase tracking-wider">
+                                Ekspor Laporan Resmi
+                            </h3>
+                            <p className="text-[11px] text-neutral-500">
+                                Unduh berkas logbook sesuai format standar resmi kampus.
+                            </p>
+                        </div>
+                        <div>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewOpen(true)}
+                                className="h-9 px-4 text-xs font-medium rounded-lg border border-neutral-200 bg-white text-[#111827] hover:bg-neutral-50 transition-colors cursor-pointer"
+                            >
+                                Preview Cetak
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className={`grid gap-6 ${selectedMonth !== "all" && selectedWeek === "all" && weeks.length > 0 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+                        <div className="space-y-2">
+                            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Format Gabungan (Bulanan)</span>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleExportPDF}
+                                    className="h-10 text-xs font-semibold rounded-lg bg-[#1E40AF] text-white hover:bg-[#1D4ED8] transition-colors cursor-pointer"
+                                >
+                                    Unduh PDF (.pdf)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleExportWord}
+                                    className="h-10 text-xs font-semibold rounded-lg border border-neutral-200 bg-white text-[#111827] hover:bg-neutral-50 transition-colors cursor-pointer"
+                                >
+                                    Unduh Word (.docx)
+                                </button>
+                            </div>
+                        </div>
+
+                        {selectedMonth !== "all" && selectedWeek === "all" && weeks.length > 0 && (
+                            <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Format Terpisah (Mingguan)</span>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleExportSeparate("pdf")}
+                                        className="h-10 text-xs font-semibold rounded-lg bg-neutral-900 text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+                                    >
+                                        Multi PDF (.pdf)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleExportSeparate("docx")}
+                                        className="h-10 text-xs font-semibold rounded-lg border border-neutral-200 bg-white text-neutral-800 hover:bg-neutral-50 transition-colors cursor-pointer"
+                                    >
+                                        Multi Word (.docx)
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -298,6 +417,9 @@ export default function DashboardPage() {
                             setSelectedMonth={setSelectedMonth}
                             selectedDate={selectedDate}
                             setSelectedDate={setSelectedDate}
+                            selectedWeek={selectedWeek}
+                            setSelectedWeek={setSelectedWeek}
+                            weeks={weeks}
                         />
                         <TimelineStream
                             entries={filteredEntries}

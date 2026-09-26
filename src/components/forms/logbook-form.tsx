@@ -4,6 +4,9 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { supabase } from "@/lib/supabase"
+import { toast } from "sonner"
+import { Sparkles, RefreshCw, MessageSquare, GraduationCap, BookOpen, FileText, Loader2, ArrowLeft } from "lucide-react"
 
 type LogbookEntry = {
     id: string
@@ -33,22 +36,22 @@ const PARAPHRASE_PREFIXES = [
 const PRESETS = [
     {
         label: "Diskusi Kelompok",
-        icon: "💬",
+        iconName: "MessageSquare",
         template: "Melakukan diskusi kelompok/proyek bersama tim terkait perkembangan dan pembagian tugas pada proyek yang sedang dikerjakan."
     },
     {
         label: "Bimbingan Mentor",
-        icon: "🎓",
+        iconName: "GraduationCap",
         template: "Mengikuti sesi bimbingan dan konsultasi bersama mentor/dosen pembimbing terkait perkembangan kegiatan magang dan evaluasi hasil kerja."
     },
     {
         label: "Riset & Literatur",
-        icon: "📖",
+        iconName: "BookOpen",
         template: "Melakukan riset mandiri dan studi literatur terkait modul/materi yang dibutuhkan dalam mendukung penyelesaian tugas di tempat magang."
     },
     {
         label: "Penyusunan Laporan",
-        icon: "📄",
+        iconName: "FileText",
         template: "Melakukan penyusunan dan penulisan laporan/dokumen formal terkait progres dan hasil kegiatan magang sebagai bagian dari dokumentasi resmi."
     }
 ]
@@ -77,6 +80,9 @@ export default function LogbookForm({
     const [isTimeInvalid, setIsTimeInvalid] = useState(false)
     const [isDateDuplicate, setIsDateDuplicate] = useState(false)
 
+    const [isAIMode, setIsAIMode] = useState(false)
+    const [aiLoading, setAiLoading] = useState(false)
+
     useEffect(() => {
         if (editingEntry) {
             setDate(editingEntry.date)
@@ -92,6 +98,7 @@ export default function LogbookForm({
             setTimeOut("17:00")
             setActivity("")
         }
+        setIsAIMode(false)
     }, [editingEntry])
 
     useEffect(() => {
@@ -133,6 +140,7 @@ export default function LogbookForm({
             setTimeOut("17:00")
             setActivity("")
         }
+        setIsAIMode(false)
     }
 
     const handleInsertPreset = (template: string) => {
@@ -144,6 +152,50 @@ export default function LogbookForm({
         const prefix = PARAPHRASE_PREFIXES[Math.floor(Math.random() * PARAPHRASE_PREFIXES.length)]
         const lastFirstLine = lastActivity.split("\n")[0].toLowerCase().replace(/^(melanjutkan|melakukan|mengikuti|meneruskan)\s+/i, "")
         setActivity(`${prefix} ${lastFirstLine}.`)
+    }
+
+    const handleGenerateAI = async () => {
+        if (activity.trim().length === 0) {
+            toast.error("Tulis draf kegiatan terlebih dahulu")
+            return
+        }
+        setAiLoading(true)
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            const token = session?.access_token || ""
+
+            const response = await fetch("/api/ai/paraphrase", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ draft: activity })
+            })
+
+            const data = await response.json()
+            if (!response.ok) {
+                toast.error(data.error || "Gagal memproses draf kegiatan")
+                return
+            }
+            setActivity(data.result)
+            setIsAIMode(false)
+            toast.success("Kalimat formal AI berhasil diterapkan")
+        } catch {
+            toast.error("Terjadi kesalahan koneksi")
+        } finally {
+            setAiLoading(false)
+        }
+    }
+
+    const renderPresetIcon = (name: string) => {
+        switch (name) {
+            case "MessageSquare": return <MessageSquare className="w-3 h-3" />
+            case "GraduationCap": return <GraduationCap className="w-3 h-3" />
+            case "BookOpen": return <BookOpen className="w-3 h-3" />
+            case "FileText": return <FileText className="w-3 h-3" />
+            default: return null
+        }
     }
 
     const handleSubmitForm = (e: React.FormEvent) => {
@@ -253,7 +305,7 @@ export default function LogbookForm({
                     </p>
                 )}
 
-                {status === "Hadir" && (
+                {status === "Hadir" && !isAIMode && (
                     <div className="space-y-2">
                         <div className="flex items-center justify-between">
                             <Label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
@@ -265,7 +317,7 @@ export default function LogbookForm({
                                     onClick={handleParaphraseLast}
                                     className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#1E3A8A] hover:text-[#172554] transition-colors"
                                 >
-                                    <span>↺</span>
+                                    <RefreshCw className="w-3 h-3" />
                                     <span>Parafrase Kemarin</span>
                                 </button>
                             )}
@@ -276,9 +328,9 @@ export default function LogbookForm({
                                     key={preset.label}
                                     type="button"
                                     onClick={() => handleInsertPreset(preset.template)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-neutral-100 text-neutral-600 hover:bg-[#1E3A8A] hover:text-white border border-transparent hover:border-[#1E3A8A] transition-all"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-neutral-100 text-neutral-600 hover:bg-[#1E3A8A] hover:text-white border border-transparent hover:border-[#1E3A8A] transition-all"
                                 >
-                                    <span>{preset.icon}</span>
+                                    {renderPresetIcon(preset.iconName)}
                                     <span>{preset.label}</span>
                                 </button>
                             ))}
@@ -287,24 +339,77 @@ export default function LogbookForm({
                 )}
 
                 <div className="space-y-2">
-                    <Label htmlFor="activity" className="text-sm font-medium text-[#111827]">
-                        Detail Kegiatan
-                    </Label>
+                    <div className="flex items-center justify-between">
+                        <Label htmlFor="activity" className="text-sm font-medium text-[#111827]">
+                            {isAIMode ? "Draf Coretan Kasar (AI)" : "Detail Kegiatan"}
+                        </Label>
+                        {status === "Hadir" && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsAIMode(!isAIMode)
+                                    if (!isAIMode) {
+                                        setActivity("")
+                                    }
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-medium bg-white text-[#111827] border border-neutral-200 hover:bg-neutral-50 transition-all shadow-sm cursor-pointer"
+                            >
+                                {isAIMode ? (
+                                    <>
+                                        <ArrowLeft className="w-3 h-3 text-neutral-500" />
+                                        <span>Kembali</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Sparkles className="w-3 h-3 text-neutral-500" />
+                                        <span>Tulis dengan AI</span>
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
                     <textarea
                         id="activity"
                         value={activity}
                         onChange={(e) => setActivity(e.target.value)}
-                        placeholder={status === "Hadir" ? "Deskripsikan apa yang Anda kerjakan hari ini..." : `Sedang ${status}`}
+                        placeholder={
+                            isAIMode 
+                                ? "Tulis coretan kasar kegiatan Anda di sini (contoh: benerin bug, meeting tim)" 
+                                : status === "Hadir" 
+                                    ? "Deskripsikan apa yang Anda kerjakan hari ini..." 
+                                    : `Sedang ${status}`
+                        }
                         required
                         disabled={status !== "Hadir"}
                         rows={4}
                         className="w-full text-sm p-3 rounded-lg border border-neutral-200 bg-white text-[#111827] placeholder:text-neutral-400 outline-none focus:border-neutral-400 disabled:bg-neutral-50 disabled:text-neutral-500"
                     />
+
+                    {isAIMode && (
+                        <button
+                            type="button"
+                            onClick={handleGenerateAI}
+                            disabled={aiLoading || activity.trim().length === 0}
+                            className="w-full h-9 mt-1 rounded-md bg-[#111827] text-xs font-medium text-white hover:bg-neutral-800 disabled:opacity-60 transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                        >
+                            {aiLoading ? (
+                                <>
+                                    <Loader2 className="animate-spin h-3.5 w-3.5 text-white" />
+                                    <span>Memproses Kalimat Formal...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                                    <span>Parafrase dengan AI</span>
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
 
                 <Button
                     type="submit"
-                    disabled={(isTimeInvalid && status === "Hadir") || !activity || isDateDuplicate}
+                    disabled={(isTimeInvalid && status === "Hadir") || !activity || isDateDuplicate || isAIMode}
                     className="h-10 w-full rounded-lg bg-[#111827] text-sm font-medium text-white hover:bg-[#1E3A8A] hover:text-white active:bg-[#172554] disabled:opacity-60 transition-all"
                 >
                     {editingEntry ? "Perbarui Logbook" : "Simpan Logbook"}
