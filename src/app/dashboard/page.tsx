@@ -47,6 +47,19 @@ const formatTime = (time: string) => {
     return time.replace(":", ".")
 }
 
+const sortLogbookEntries = (list: LogbookEntry[]): LogbookEntry[] => {
+    if (!Array.isArray(list)) return []
+    return [...list].sort((a, b) => {
+        const dateA = a.date || ""
+        const dateB = b.date || ""
+        const dateCompare = dateB.localeCompare(dateA)
+        if (dateCompare !== 0) return dateCompare
+        const timeA = a.timeIn && a.timeIn !== "-" ? a.timeIn : ""
+        const timeB = b.timeIn && b.timeIn !== "-" ? b.timeIn : ""
+        return timeB.localeCompare(timeA)
+    })
+}
+
 export default function DashboardPage() {
     const router = useRouter()
     const [previewOpen, setPreviewOpen] = useState(false)
@@ -78,11 +91,15 @@ export default function DashboardPage() {
                 setShowWarning(isProfileIncomplete)
             }
 
-            const { data: logbooksData } = await supabase
+            const { data: logbooksData, error: logbooksError } = await supabase
                 .from("logbooks")
                 .select("*")
                 .eq("user_id", session.user.id)
                 .order("date", { ascending: false })
+
+            if (logbooksError) {
+                console.error("Error fetching logbooks:", logbooksError)
+            }
 
             if (logbooksData) {
                 const mapped = logbooksData.map((item: any) => ({
@@ -93,7 +110,7 @@ export default function DashboardPage() {
                     activity: item.activity,
                     status: item.status_kehadiran
                 }))
-                setEntries(mapped)
+                setEntries(sortLogbookEntries(mapped))
             }
         }
         checkAuth()
@@ -121,8 +138,10 @@ export default function DashboardPage() {
             }
 
             setEntries(prev =>
-                prev.map(item =>
-                    item.id === entryData.id ? { ...item, ...entryData } : item
+                sortLogbookEntries(
+                    prev.map(item =>
+                        item.id === entryData.id ? { ...item, ...entryData } : item
+                    )
                 )
             )
             setEditingEntry(null)
@@ -154,7 +173,7 @@ export default function DashboardPage() {
                 activity: data.activity,
                 status: data.status_kehadiran
             }
-            setEntries(prev => [newEntry, ...prev])
+            setEntries(prev => sortLogbookEntries([newEntry, ...prev]))
             toast.success("Logbook berhasil ditambahkan")
         }
     }
