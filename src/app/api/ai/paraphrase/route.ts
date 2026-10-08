@@ -33,13 +33,15 @@ export async function POST(req: NextRequest) {
         }
 
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`
-        const prompt = `Ubah catatan aktivitas magang informal berikut menjadi kalimat formal standar logbook akademik/magang industri dalam Bahasa Indonesia.
-Ketentuan:
-1. Mulai dengan kata kerja aktif formal (Melakukan, Merancang, Mengikuti, Membantu, Menyelesaikan, dll).
-2. Gunakan ejaan resmi (PUEBI) yang profesional, ringkas, dan jelas.
-3. Kembalikan HANYA teks hasil parafrase tanpa kalimat pembuka/penutup tambahan seperti "Berikut hasilnya:" atau tanda kutip pembungkus.
+        const prompt = `Ubah draf catatan aktivitas magang berikut menjadi kalimat formal logbook magang industri yang padat, singkat, dan tepat ke poin utama.
 
-Input informal:
+Kriteria Utama:
+1. SANGAT SINGKAT & PADAT: Maksimal 1-2 kalimat (idealnya 1 kalimat ringkas). Jangan berbelit-belit atau terlalu panjang agar muat rapi di kolom logbook.
+2. DIAWALI KATA KERJA AKTIF: Mulai dengan kata kerja aktif formal seperti "Melakukan...", "Merancang...", "Mengembangkan...", "Mengikuti...", "Menyelesaikan...", "Membuat...", "Menganalisis...".
+3. BAHASA FORMAL AKADEMIK/INDUSTRI: Gunakan ejaan resmi baku (PUEBI/EYD) tanpa istilah informal/slang.
+4. HANYA OUTPUT HASIL: Berikan HANYA teks hasil parafrase akhir tanpa pengantar, tanpa penutup, tanpa tanda kutip pembungkus.
+
+Draf Informal:
 ${draft.trim()}`
 
         const response = await fetch(geminiUrl, {

@@ -13,12 +13,8 @@ export interface WeekRange {
 }
 
 export function getWeeksOfMonth(year: number, month: number): WeekRange[] {
-    const weeks: WeekRange[] = []
-    const firstDay = new Date(year, month - 1, 1)
+    const rawWeeks: { startDate: Date; endDate: Date; count: number }[] = []
     const lastDay = new Date(year, month, 0)
-    
-    let currentWeekNumber = 1
-    let weekStart = new Date(firstDay)
     const months = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"]
     const monthLabel = months[month - 1] || ""
 
@@ -28,30 +24,54 @@ export function getWeeksOfMonth(year: number, month: number): WeekRange[] {
         const d = String(date.getDate()).padStart(2, "0")
         return `${y}-${m}-${d}`
     }
-    
+
+    let weekStart = new Date(year, month - 1, 1)
+    let workDayCount = 0
+
     for (let d = 1; d <= lastDay.getDate(); d++) {
         const currentDate = new Date(year, month - 1, d)
         const dayOfWeek = currentDate.getDay()
-        
-        if (dayOfWeek === 0) {
-            continue
+
+        if (dayOfWeek !== 0) {
+            workDayCount++
         }
-        
+
         if (currentDate.getDate() > 1 && dayOfWeek === 1) {
             weekStart = new Date(currentDate)
+            workDayCount = 1
         }
-        
+
         if (dayOfWeek === 6 || d === lastDay.getDate()) {
-            weeks.push({
-                weekNumber: currentWeekNumber,
-                startDate: formatDateIso(weekStart),
-                endDate: formatDateIso(currentDate),
-                label: `Minggu ${currentWeekNumber} (${weekStart.getDate()} - ${currentDate.getDate()} ${monthLabel})`
+            rawWeeks.push({
+                startDate: new Date(weekStart),
+                endDate: new Date(currentDate),
+                count: workDayCount
             })
-            currentWeekNumber++
         }
     }
-    
-    return weeks
+
+    if (rawWeeks.length > 1 && rawWeeks[0].count < 3) {
+        const first = rawWeeks.shift()!
+        rawWeeks[0].startDate = first.startDate
+        rawWeeks[0].count += first.count
+    }
+
+    if (rawWeeks.length > 1 && rawWeeks[rawWeeks.length - 1].count < 3) {
+        const last = rawWeeks.pop()!
+        rawWeeks[rawWeeks.length - 1].endDate = last.endDate
+        rawWeeks[rawWeeks.length - 1].count += last.count
+    }
+
+    return rawWeeks.map((w, index) => {
+        const weekNum = index + 1
+        const startDay = w.startDate.getDate()
+        const endDay = w.endDate.getDate()
+        return {
+            weekNumber: weekNum,
+            startDate: formatDateIso(w.startDate),
+            endDate: formatDateIso(w.endDate),
+            label: `Minggu ${weekNum} (${startDay} - ${endDay} ${monthLabel})`
+        }
+    })
 }
 

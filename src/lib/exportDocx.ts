@@ -50,6 +50,8 @@ const formatTime = (time: string) => {
     return time.replace(":", ".")
 }
 
+let cachedLogoBuffer: Uint8Array | null = null
+
 export async function generateLogbookDocx(profile: Profile | null, entries: LogbookEntry[]): Promise<Blob> {
     const defaultBorder = {
         style: BorderStyle.SINGLE,
@@ -77,14 +79,16 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
         color: "000000"
     }
 
-    let logoBuffer: Uint8Array | null = null
-    try {
-        const res = await fetch("/polinema-gray.jpg")
-        if (res.ok) {
-            const arrBuffer = await res.arrayBuffer()
-            logoBuffer = new Uint8Array(arrBuffer)
-        }
-    } catch {}
+    if (!cachedLogoBuffer) {
+        try {
+            const res = await fetch("/polinema-gray.jpg")
+            if (res.ok) {
+                const arrBuffer = await res.arrayBuffer()
+                cachedLogoBuffer = new Uint8Array(arrBuffer)
+            }
+        } catch {}
+    }
+    const logoBuffer = cachedLogoBuffer
 
     const kopChildren: any[] = []
     if (logoBuffer) {
@@ -102,9 +106,10 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
 
     const kopTable = new Table({
         width: {
-            size: 100,
-            type: WidthType.PERCENTAGE
+            size: 9360,
+            type: WidthType.DXA
         },
+        columnWidths: [1400, 7960],
         borders: {
             top: { style: BorderStyle.NONE, size: 0, color: "auto" },
             bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
@@ -117,7 +122,7 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
             new TableRow({
                 children: [
                     new TableCell({
-                        width: { size: 15, type: WidthType.PERCENTAGE },
+                        width: { size: 1400, type: WidthType.DXA },
                         borders: {
                             ...borderlessCellBorders,
                             bottom: kopBottomBorder
@@ -130,7 +135,7 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
                         ]
                     }),
                     new TableCell({
-                        width: { size: 85, type: WidthType.PERCENTAGE },
+                        width: { size: 7960, type: WidthType.DXA },
                         borders: {
                             ...borderlessCellBorders,
                             bottom: kopBottomBorder
@@ -242,9 +247,10 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
 
     const metadataTable = new Table({
         width: {
-            size: 100,
-            type: WidthType.PERCENTAGE
+            size: 9360,
+            type: WidthType.DXA
         },
+        columnWidths: [2500, 400, 6460],
         borders: {
             top: { style: BorderStyle.NONE, size: 0, color: "auto" },
             bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
@@ -262,7 +268,7 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
             new TableRow({
                 children: [
                     new TableCell({
-                        width: { size: 30, type: WidthType.PERCENTAGE },
+                        width: { size: 2500, type: WidthType.DXA },
                         borders: borderlessCellBorders,
                         children: [
                             new Paragraph({
@@ -277,7 +283,7 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
                         ]
                     }),
                     new TableCell({
-                        width: { size: 5, type: WidthType.PERCENTAGE },
+                        width: { size: 400, type: WidthType.DXA },
                         borders: borderlessCellBorders,
                         children: [
                             new Paragraph({
@@ -292,7 +298,7 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
                         ]
                     }),
                     new TableCell({
-                        width: { size: 65, type: WidthType.PERCENTAGE },
+                        width: { size: 6460, type: WidthType.DXA },
                         borders: borderlessCellBorders,
                         children: [
                             new Paragraph({
@@ -318,13 +324,13 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
 
     const headersRow = new TableRow({
         children: [
-            { text: "Hari, Tanggal", width: 25, align: AlignmentType.CENTER },
-            { text: "Jam Masuk", width: 10, align: AlignmentType.CENTER },
-            { text: "Jam Pulang", width: 10, align: AlignmentType.CENTER },
-            { text: "Kegiatan", width: 55, align: AlignmentType.LEFT }
+            { text: "Hari, Tanggal", width: 2300, align: AlignmentType.CENTER },
+            { text: "Jam Masuk", width: 1100, align: AlignmentType.CENTER },
+            { text: "Jam Pulang", width: 1100, align: AlignmentType.CENTER },
+            { text: "Kegiatan", width: 4860, align: AlignmentType.LEFT }
         ].map((col) => (
             new TableCell({
-                width: { size: col.width, type: WidthType.PERCENTAGE },
+                width: { size: col.width, type: WidthType.DXA },
                 borders: cellBorders,
                 children: [
                     new Paragraph({
@@ -347,7 +353,7 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
         new TableRow({
             children: [
                 new TableCell({
-                    width: { size: 25, type: WidthType.PERCENTAGE },
+                    width: { size: 2300, type: WidthType.DXA },
                     borders: cellBorders,
                     children: [
                         new Paragraph({
@@ -363,7 +369,7 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
                     ]
                 }),
                 new TableCell({
-                    width: { size: 10, type: WidthType.PERCENTAGE },
+                    width: { size: 1100, type: WidthType.DXA },
                     borders: cellBorders,
                     children: [
                         new Paragraph({
@@ -379,7 +385,7 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
                     ]
                 }),
                 new TableCell({
-                    width: { size: 10, type: WidthType.PERCENTAGE },
+                    width: { size: 1100, type: WidthType.DXA },
                     borders: cellBorders,
                     children: [
                         new Paragraph({
@@ -395,7 +401,7 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
                     ]
                 }),
                 new TableCell({
-                    width: { size: 55, type: WidthType.PERCENTAGE },
+                    width: { size: 4860, type: WidthType.DXA },
                     borders: cellBorders,
                     children: [
                         new Paragraph({
@@ -416,9 +422,10 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
 
     const logbookTable = new Table({
         width: {
-            size: 100,
-            type: WidthType.PERCENTAGE
+            size: 9360,
+            type: WidthType.DXA
         },
+        columnWidths: [2300, 1100, 1100, 4860],
         rows: [headersRow, ...bodyRows]
     })
 
@@ -466,9 +473,10 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
 
     const signaturesTable = new Table({
         width: {
-            size: 100,
-            type: WidthType.PERCENTAGE
+            size: 9360,
+            type: WidthType.DXA
         },
+        columnWidths: [4680, 4680],
         borders: {
             top: { style: BorderStyle.NONE, size: 0, color: "auto" },
             bottom: { style: BorderStyle.NONE, size: 0, color: "auto" },
@@ -481,7 +489,7 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
             new TableRow({
                 children: [
                     new TableCell({
-                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        width: { size: 4680, type: WidthType.DXA },
                         borders: borderlessCellBorders,
                         children: [
                             new Paragraph({
@@ -519,7 +527,7 @@ export async function generateLogbookDocx(profile: Profile | null, entries: Logb
                         ]
                     }),
                     new TableCell({
-                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        width: { size: 4680, type: WidthType.DXA },
                         borders: borderlessCellBorders,
                         children: [
                             new Paragraph({

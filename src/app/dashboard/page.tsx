@@ -237,14 +237,21 @@ export default function DashboardPage() {
                 year = found.date.split("-")[0]
             }
 
-            if (selectedWeek !== "all") {
-                period = `${monthName}_${year}_Minggu_${selectedWeek}`
+            if (selectedWeek !== "all" && weeks.length > 0) {
+                const activeW = weeks.find(w => w.weekNumber.toString() === selectedWeek)
+                if (activeW) {
+                    const startDay = parseInt(activeW.startDate.split("-")[2], 10)
+                    const endDay = parseInt(activeW.endDate.split("-")[2], 10)
+                    period = `${monthName} ${year} (W${selectedWeek}, ${startDay} - ${endDay})`
+                } else {
+                    period = `${monthName} ${year} W${selectedWeek}`
+                }
             } else {
-                period = `${monthName}_${year}`
+                period = `${monthName} ${year}`
             }
         }
 
-        const cleanFilename = `Logbook_${nim}_${fullName}_${period}.${extension}`
+        const cleanFilename = `Logbook_${period}.${extension}`
         return cleanFilename.replace(/[\/\\:\*\?"<>\|]/g, "")
     }
 
@@ -293,13 +300,6 @@ export default function DashboardPage() {
                 
                 if (weekEntries.length === 0) continue
                 
-                const nim = profile?.nim ? String(profile.nim).replace(/[^a-zA-Z0-9]/g, "") : "Magang"
-                const fullName = profile?.full_name 
-                    ? String(profile.full_name)
-                        .replace(/\s+/g, "_")
-                        .replace(/[^a-zA-Z0-9_]/g, "")
-                    : "Mahasiswa"
-                
                 const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
                 const monthIndex = parseInt(selectedMonth, 10) - 1
                 const monthName = months[monthIndex] || "Bulan"
@@ -309,8 +309,11 @@ export default function DashboardPage() {
                 if (found) {
                     year = found.date.split("-")[0]
                 }
+
+                const startDay = parseInt(w.startDate.split("-")[2], 10)
+                const endDay = parseInt(w.endDate.split("-")[2], 10)
                 
-                const filename = `Logbook_${nim}_${fullName}_${monthName}_${year}_Minggu_${w.weekNumber}.${type}`.replace(/[\/\\:\*\?"<>\|]/g, "")
+                const filename = `Logbook_${monthName} ${year} (W${w.weekNumber}, ${startDay} - ${endDay}).${type}`.replace(/[\/\\:\*\?"<>\|]/g, "")
                 
                 if (type === "docx") {
                     const { generateLogbookDocx } = await import("@/lib/exportDocx")
